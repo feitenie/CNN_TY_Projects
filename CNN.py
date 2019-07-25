@@ -11,8 +11,14 @@ import cv2
 import random
 
 import keras
-from keras.models import Sequential, load_model
-from keras.layers import Dense, Dropout, Convolution2D, MaxPooling2D
+from tensorflow.keras.models import Sequential, load_model
+from tensorflow.keras.layers import Dense, Dropout, Convolution2D, MaxPooling2D, Flatten
+from tensorflow.keras import backend
+from keras.callbacks import *
+from keras.layers.normalization import BatchNormalization
+from keras import optimizers
+
+import matplotlib.pyplot as plt
 
 a = [[240, 190, 55]]
 
@@ -63,7 +69,7 @@ def Preprocessing(usd_img, chosen, train):
     Y_test = Y[:num02]
     return X_train, X_test, Y_train, Y_test
 
-def CNN():
+def CNN(img_rows,img_cols):
     model = Sequential()
     model.add(Convolution2D(20, (3,3), use_bias=True, padding='SAME', strides=1, activation='selu', input_shape=(img_rows,img_cols,1)))
     model.add(Convolution2D(20, (3,3), use_bias=True, padding='SAME', strides=1, activation='selu' ))
@@ -83,6 +89,29 @@ def CNN():
     model.add(Dense(128, activation='selu'))
     model.add(Dense(10, activation='softmax'))
     return model
+
+def plot_confusion_matrix(y_true, y_pred, classes, normalize = False, title = None, cmap = plt.cm.Blues):
+
+    if not tilte:
+        if normalize:
+            title = "Normalized Confusion Matrix"
+        else:
+            title = "Confusion Matrix (Numbers)"
+    cm = confusion_matrix(y_true, y_pred)
+    classes = classes[unique_label(y_true, y_pred)]
+
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        print("Normalized Confusion Matrix")
+    else:
+        print('Confusion matrix (Numbers)')
+
+    fig, ax = plt.subplots()
+    im = ax.imshow(cm, interpolation='nearest', cmap=cmap)
+    ax.figure.colorbar(im, ax=ax)
+    ax.set(xticks=np.arange(cm.shape[1]),yticks=np.arange(cm.shape[0]),
+           # ... and label them with the respective list entries
+           xticklabels=classes, yticklabels=classes, title=title, ylabel='True label', xlabel='Predicted label')
 
 if __name__ == "__main__":
     
