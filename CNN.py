@@ -16,10 +16,11 @@ from tensorflow.keras.layers import Dense, Dropout, Convolution2D, MaxPooling2D,
 from tensorflow.keras import backend
 from keras.callbacks import *
 from keras.layers.normalization import BatchNormalization
-from keras import optimizers
+from tensorflow.keras import optimizers
 
 import matplotlib.pyplot as plt
-
+from sklearn.metrics import confusion_matrix
+from sklearn.utils.multiclass import unique_labels
 a = [[240, 190, 55]]
 
 def rgb2gray(rgb):
@@ -56,7 +57,7 @@ def Preprocessing(usd_img, chosen, train):
     
     indices = np.arange(X.shape[0])
     random.seed(66)
-    indices = random.shuffle(indices)    
+    random.shuffle(indices)    
     num02 = int(0.2 * X.shape[0])
 
     # X 
@@ -92,13 +93,13 @@ def CNN(img_rows,img_cols):
 
 def plot_confusion_matrix(y_true, y_pred, classes, normalize = False, title = None, cmap = plt.cm.Blues):
 
-    if not tilte:
+    if not title:
         if normalize:
             title = "Normalized Confusion Matrix"
         else:
             title = "Confusion Matrix (Numbers)"
     cm = confusion_matrix(y_true, y_pred)
-    classes = classes[unique_label(y_true, y_pred)]
+    classes = classes[unique_labels(y_true, y_pred)]
 
     if normalize:
         cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
@@ -108,24 +109,35 @@ def plot_confusion_matrix(y_true, y_pred, classes, normalize = False, title = No
 
     fig, ax = plt.subplots()
     im = ax.imshow(cm, interpolation='nearest', cmap=cmap)
-    ax.figure.colorbar(im, ax=ax)
+    fig.colorbar(im)
     ax.set(xticks=np.arange(cm.shape[1]),yticks=np.arange(cm.shape[0]),
            # ... and label them with the respective list entries
            xticklabels=classes, yticklabels=classes, title=title, ylabel='True label', xlabel='Predicted label')
-
+    fmt = '.2f' if normalize else 'd'
+    thresh = cm.max() / 2.
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            ax.text(j, i, format(cm[i, j], fmt),
+                    ha="center", va="center",
+                    color="white" if cm[i, j] > thresh else "black")
+    fig.tight_layout()
+    plt.show()
 if __name__ == "__main__":
     
     usd_img, chosen, train = load_data()
     X_train, X_test, Y_train, Y_test = Preprocessing(usd_img, chosen, train)
     
     # hyperparameter
-    BATCH_SIZE = 10
-    EPOCHS = 60
-    learning_rate = 0.001
+    BATCH_SIZE = 15
+    EPOCHS = 10
+    learning_rate = 0.0005
     #
     img_rows, img_cols = X_train.shape[1], X_train.shape[2]
     #model
     model = CNN(img_rows, img_cols)
-    model.compile(loss = keras.losses.categorical_crossentropy, optimizer = keras.optimizers.Adam(lr = learning_rate), metrics=['accuracy'])
-    model.fit(X_train, Y_train, valudation_data = (X_test, Y_test), batch_size = BATCH_SIZE, epochs = EPOCHS, shuffle = True)
-    print(model.evaluate(X_test, Y_test))
+    model.compile(loss = keras.losses.categorical_crossentropy, optimizer = optimizers.Adam(lr = learning_rate), metrics=['accuracy'])
+    H = model.fit(X_train, Y_train, validation_data = (X_test, Y_test), batch_size = BATCH_SIZE, epochs = EPOCHS, shuffle = True)
+    print("TEST accuracy = " + str( model.evaluate(X_test, Y_test)[1]))
+    print("TRAIN accuracy = " + str(model.evaluate(X_train, Y_train)[1]))
+    classes = np.arange(10).astype("str")
+    plot_confusion_matrix(Y_test.argmax(axis = 1), model.predict(X_test).argmax(axis = 1), classes)
