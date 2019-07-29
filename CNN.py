@@ -17,6 +17,9 @@ from tensorflow.keras import backend
 from keras.callbacks import *
 from keras.layers.normalization import BatchNormalization
 from tensorflow.keras import optimizers
+from sklearn.metrics import classification_report
+from keras import regularizers
+
 
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
@@ -75,18 +78,17 @@ def CNN(img_rows,img_cols):
     model.add(Convolution2D(20, (3,3), use_bias=True, padding='SAME', strides=1, activation='selu', input_shape=(img_rows,img_cols,1)))
     model.add(Convolution2D(20, (3,3), use_bias=True, padding='SAME', strides=1, activation='selu' ))
     model.add(MaxPooling2D(pool_size=(3,3)))
-    model.add(Convolution2D(40, (3,3), use_bias=True, padding='SAME', strides=1, activation='selu'))
-    model.add(Convolution2D(40, (3,3), use_bias=True, padding='SAME', strides=1, activation='selu'))
+    model.add(Convolution2D(40, (3,3), use_bias=True, padding='SAME', strides=1, activation='selu', activity_regularizer = regularizers.l1(0.01)))
+    model.add(Convolution2D(40, (3,3), use_bias=True, padding='SAME', strides=1, activation='selu', activity_regularizer = regularizers.l1(0.01)))
     model.add(MaxPooling2D(pool_size=(3,3)))
     model.add(Convolution2D(40, (3,3), use_bias=True, padding='SAME', strides=1, activation='selu'))
-    model.add(Convolution2D(40, (3,3), use_bias=True, padding='SAME', strides=1, activation='selu'))
     model.add(MaxPooling2D(pool_size=(3,3)))
-    model.add(Convolution2D(40, (5,5), use_bias=True, padding='SAME', strides=1, activation='selu'))
     model.add(Convolution2D(40, (5,5), use_bias=True, padding='SAME', strides=1, activation='selu'))
     model.add(MaxPooling2D(pool_size=(5,5)))
 
     model.add(Flatten())
     model.add(Dense(128, activation='selu'))
+#    model.add(Dropout(0.7))
     model.add(Dense(128, activation='selu'))
     model.add(Dense(10, activation='softmax'))
     return model
@@ -122,14 +124,31 @@ def plot_confusion_matrix(y_true, y_pred, classes, normalize = False, title = No
                     color="white" if cm[i, j] > thresh else "black")
     fig.tight_layout()
     plt.show()
+    
+def plot_history(H, N):
+    plt.style.use("ggplot")
+    ax = plt.gca()
+    ax2 = ax.twinx()
+    l1, = ax.plot(np.arange(0, N), H.history["loss"], label="train_loss", color = "darkblue")
+    l2, = ax.plot(np.arange(0, N), H.history["val_loss"], label="val_loss", color = "orangered")
+
+    l3, = ax2.plot(np.arange(0, N), H.history["acc"], label="train_acc", color = "skyblue")
+    l4, = ax2.plot(np.arange(0, N), H.history["val_acc"], label="val_acc", color = "indianred")
+    ax.legend([l1,l2])
+    ax2.legend([l3,l4])
+
+    plt.title("Training Loss and Accuracy on Dataset")
+    plt.xlabel("Epoch #")   
+    plt.ylabel("Loss/Accuracy")
+    plt.show()
 if __name__ == "__main__":
     
     usd_img, chosen, train = load_data()
     X_train, X_test, Y_train, Y_test = Preprocessing(usd_img, chosen, train)
     
     # hyperparameter
-    BATCH_SIZE = 15
-    EPOCHS = 10
+    BATCH_SIZE = 20
+    EPOCHS = 8
     learning_rate = 0.0005
     #
     img_rows, img_cols = X_train.shape[1], X_train.shape[2]
@@ -141,3 +160,5 @@ if __name__ == "__main__":
     print("TRAIN accuracy = " + str(model.evaluate(X_train, Y_train)[1]))
     classes = np.arange(10).astype("str")
     plot_confusion_matrix(Y_test.argmax(axis = 1), model.predict(X_test).argmax(axis = 1), classes)
+    plot_history(H, EPOCHS)
+    print(classification_report(Y_test.argmax(axis = 1), model.predict(X_test).argmax(axis = 1), target_names = classes))    
